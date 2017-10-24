@@ -8,6 +8,7 @@
 #include "Eigen-3.3/Eigen/Core"
 #include "Eigen-3.3/Eigen/QR"
 #include "json.hpp"
+#include "spline.h"
 
 using namespace std;
 
@@ -68,6 +69,16 @@ int NextWaypoint(double x, double y, double theta, const vector<double> &maps_x,
 
 	double map_x = maps_x[closestWaypoint];
 	double map_y = maps_y[closestWaypoint];
+
+
+
+
+
+
+
+
+
+
 
 	double heading = atan2( (map_y-y),(map_x-x) );
 
@@ -159,6 +170,14 @@ vector<double> getXY(double s, double d, const vector<double> &maps_s, const vec
 
 }
 
+
+
+
+
+
+
+
+
 int main() {
   uWS::Hub h;
 
@@ -196,6 +215,12 @@ int main() {
   	map_waypoints_dy.push_back(d_y);
   }
 
+  //start in lane 1;
+  int lane = 1;
+
+  // Have a reference velocity to target
+  double ref_vel = 49.5; //mph
+
   h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                      uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -213,8 +238,7 @@ int main() {
         string event = j[0].get<string>();
         
         if (event == "telemetry") {
-          // j[1] is the data JSON object
-          
+          // j[1] is the data JSON object          
         	// Main car's localization Data
           	double car_x = j[1]["x"];
           	double car_y = j[1]["y"];
@@ -222,13 +246,13 @@ int main() {
           	double car_d = j[1]["d"];
           	double car_yaw = j[1]["yaw"];
           	double car_speed = j[1]["speed"];
-
           	// Previous path data given to the Planner
           	auto previous_path_x = j[1]["previous_path_x"];
           	auto previous_path_y = j[1]["previous_path_y"];
           	// Previous path's end s and d values 
           	double end_path_s = j[1]["end_path_s"];
           	double end_path_d = j[1]["end_path_d"];
+			int prev_size = previous_path_x.size();
 
           	// Sensor Fusion Data, a list of all other cars on the same side of the road.
           	auto sensor_fusion = j[1]["sensor_fusion"];
@@ -240,6 +264,19 @@ int main() {
 
 
           	// TODO: define a path made up of (x,y) points that the car will visit sequentially every .02 seconds
+
+			double dist_inc = 0.3;
+			for (int i = 0; i < 50; i++)
+			{
+				double next_s = car_s + (i + 1)*dist_inc;
+				double next_d = 6;
+				vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
+
+				next_x_vals.push_back(xy[0]);
+				next_y_vals.push_back(xy[1]);
+			}
+
+			// END
           	msgJson["next_x"] = next_x_vals;
           	msgJson["next_y"] = next_y_vals;
 
