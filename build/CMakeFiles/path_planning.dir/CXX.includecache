@@ -849,4 +849,16 @@ Eigen-3.3/Eigen/QR
 /mnt/c/DATA/elearning/Udacity_Self_Driving_Car_Nanodegree/term3/CarND-Path-Planning-Project/src/Eigen-3.3/Eigen/QR
 json.hpp
 /mnt/c/DATA/elearning/Udacity_Self_Driving_Car_Nanodegree/term3/CarND-Path-Planning-Project/src/json.hpp
+spline.h
+/mnt/c/DATA/elearning/Udacity_Self_Driving_Car_Nanodegree/term3/CarND-Path-Planning-Project/src/spline.h
+
+/mnt/c/DATA/elearning/Udacity_Self_Driving_Car_Nanodegree/term3/CarND-Path-Planning-Project/src/spline.h
+cstdio
+-
+cassert
+-
+vector
+-
+algorithm
+-
 
