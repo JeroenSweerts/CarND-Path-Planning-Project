@@ -236,11 +236,14 @@ int main() {
           	double car_s = j[1]["s"];
           	double car_d = j[1]["d"];
           	double car_yaw = j[1]["yaw"];
-          	double car_speed = j[1]["speed"];          	
+          	double car_speed = j[1]["speed"];   
+			// Previous path data given to the Planner
           	auto previous_path_x = j[1]["previous_path_x"];
-          	auto previous_path_y = j[1]["previous_path_y"];          	
+          	auto previous_path_y = j[1]["previous_path_y"]; 
+			// Previous path's end s and d values
           	double end_path_s = j[1]["end_path_s"];
           	double end_path_d = j[1]["end_path_d"];
+			// Sensor Fusion Data, a list of all other cars on the same side of the road
 			vector<vector<double>> sensor_fusion = j[1]["sensor_fusion"];
 
 			int prev_size = previous_path_x.size();
@@ -255,39 +258,28 @@ int main() {
 			bool too_close = false;
 
 			//find ref_v to use
+			//SENSOR FUSION
 			for (int i = 0; i < sensor_fusion.size(); i++)
 			{
 			//car is in my lane
+			double vx = sensor_fusion[i][3];
+			double vy = sensor_fusion[i][4];
+			double check_speed = sqrt(vx*vx + vy*vy);
+			double check_car_s = sensor_fusion[i][5];
+
+
+
 			float d = sensor_fusion[i][6];
 			if(d < (2+4*lane+2) && d > (2+4*lane-2))
 				{
-				double vx = sensor_fusion[i][3];
-				double vy = sensor_fusion[i][4];
-				double check_speed = sqrt(vx*vx + vy*vy);
-				double check_car_s = sensor_fusion[i][5];
-
 				check_car_s += ((double)prev_size*.02*check_speed);//if using previous points can project s value outwards in time
+				double gap = check_car_s - car_s;
 				//check s values greater than mine and s gap
-				if((check_car_s > car_s) && ((check_car_s-car_s) < 30))
+				if((check_car_s > car_s) && ((gap) < 30))
 					{
-
-
-
-
 					//ref_vel = 29.5;
 					too_close = true;
-					if (lane > 0)
-					{
-						lane = 0;
 					}
-					else 
-					{
-						lane = lane + 1;
-					}
-
-					}
-
-
 				}
 			}
 
@@ -296,6 +288,23 @@ int main() {
 			if (too_close)
 			{
 				ref_vel -= .224;
+
+				//left lane
+				if (lane == 0)
+				{
+					lane = lane + 1;
+				}
+
+				else if (lane == 1)
+				{
+					lane = lane - 1;
+				}
+
+				else
+				{
+					lane = lane - 1;
+				}
+
 			}
 			else if (ref_vel < 49.5)
 			{
@@ -316,7 +325,7 @@ double ref_yaw = deg2rad(car_yaw);
 
 
 //if previous size is almost empty, use the car as starting reference
-if (prev_size < 2)
+if (prev_size < 2) //this is at the start when we don't have any previous path points 
 {
 	//Use two points that make the path tangent to the car
 	double prev_car_x = car_x - cos(car_yaw);
