@@ -170,6 +170,7 @@ vector<double> getXY(double s, double d, vector<double> maps_s, vector<double> m
 
 }
 
+
 int main() {
   uWS::Hub h;
 
@@ -183,6 +184,7 @@ int main() {
   string map_file_ = "../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
   double max_s = 6945.554;
+ 
   ifstream in_map_(map_file_.c_str(), ifstream::in);
 
   string line;
@@ -257,8 +259,11 @@ int main() {
 
 			bool too_close = false;			
 
-			vector<double> gap_ahead(3);
-			vector<double> gap_behind(3);
+			vector<double> gap_ahead(3); //vector containing the distance between the ego car and the nearest vehicle ahead for each lane
+			vector<double> gap_behind(3); //vector containing the distance between the ego car and the nearest vehicle behind for each lane
+			vector<double> speed_ahead(3); //speed of the cars ahead of us
+			
+
 			for (int i = 0; i < gap_ahead.size(); i++)
 				{
 					gap_ahead[i] = 99999999;
@@ -266,7 +271,7 @@ int main() {
 				}
 
 			//find ref_v to use
-			//SENSOR FUSION
+			//SENSOR FUSION			
 			for (int i = 0; i < sensor_fusion.size(); i++)
 			{
 			//car is in my lane
@@ -278,8 +283,10 @@ int main() {
 			float d = sensor_fusion[i][6];
 			//check the lane of the current vehicle
 			int this_lane;
+			check_car_s += ((double)prev_size*.02*check_speed);
+			//std::cout << "speed_ahead[0]: "<< speed_ahead[0] << "speed_ahead[1]: " << speed_ahead[1]<< "speed_ahead[2]: " << speed_ahead[2]<<endl;
 			
-			//std::cout << this_lane;
+			//check the lane of the current sensor fusion car
 				if (d < 4 && d > 0)
 				{
 					this_lane = 0;
@@ -292,72 +299,88 @@ int main() {
 				{
 					this_lane = 2;
 				}			
-				
+				//check if there is a car ahead of ego car and calculate the s-distance
 				if (check_car_s > car_s) 
-				{
+				{					
 					if (gap_ahead[this_lane] > check_car_s - car_s)
 					{
 						gap_ahead[this_lane] = check_car_s - car_s;
-					}					
+						speed_ahead[this_lane] = check_speed;
+					}
 				}
 				else
-				{
+				{					
 					if (gap_behind[this_lane] > car_s - check_car_s)
 					{
-						gap_behind[this_lane] = car_s - check_car_s;
-					}					
+						gap_behind[this_lane] = car_s - check_car_s;						
+					}
 				}
 				//std::cout << gap_behind[0];
-		
+			//check distance between ego car and car in same lane ahead
 			if(d < (2+4*lane+2) && d > (2+4*lane-2))
 				{
-				check_car_s += ((double)prev_size*.02*check_speed);//if using previous points can project s value outwards in time
+				//check_car_s += ((double)prev_size*.02*check_speed);//if using previous points can project s value outwards in time
 				double gap = check_car_s - car_s;
 				//check s values greater than mine and s gap
 				if((check_car_s > car_s) && ((gap) < 30))
-					{
-					//ref_vel = 29.5;
-					too_close = true;
-					}
+					{					
+					too_close = true;						
+					}				
 				}
 			}
-
-
-
+			//if ego car is too close to car ahead, then consider switching lanes
 			if (too_close)
-			{
-				ref_vel -= .224;
-				int mingap = 20;//minimum distance required to change lane safely
+			{				
+				ref_vel -= .224;				
+				double mingap_ahead = 10*car_speed/49.5;//minimum distance required to change lane safely
+				double mingap_behind = 20 * 49.5 / car_speed;;
 				//left lane
 				if (lane == 0)
 				{
-					if (gap_behind[1] > mingap && gap_ahead[1] > mingap)
+					if (gap_behind[1] > mingap_behind && gap_ahead[1] > mingap_ahead)
 					{
-						lane = lane + 1;
+						if (speed_ahead[1] > speed_ahead[lane] || speed_ahead[1]==0)
+						{
+							lane = lane + 1;
+						}						
 					}
 					
 				}
 				//middle lane
 				else if (lane == 1)
 				{
-					if (gap_behind[0] > gap_behind[2] && gap_behind[0] > mingap && gap_ahead[0] > mingap)
+					if (gap_behind[0] > mingap_behind && gap_ahead[0] > mingap_ahead && speed_ahead[0] == 0) 
 					{
 						lane = lane - 1;
 					}
-
-					if (gap_behind[2] > gap_behind[0] && gap_behind[2] > mingap && gap_ahead[2] > mingap)
+					else if (gap_behind[2] > mingap_behind && gap_ahead[2] > mingap_ahead && speed_ahead[2] == 0)
 					{
 						lane = lane + 1;
 					}
-
-					
+					else if (gap_ahead[0] > gap_ahead[2] && gap_behind[0] > mingap_behind && gap_ahead[0] > mingap_ahead)
+					{
+						if (speed_ahead[0] > speed_ahead[lane] || gap_ahead[0] > 60)
+						{
+							lane = lane - 1;
+						}
+					}
+					else if (gap_ahead[2] > gap_ahead[0] && gap_behind[2] > mingap_behind && gap_ahead[2] > mingap_ahead)
+					{
+						if (speed_ahead[2] > speed_ahead[lane] || gap_ahead[2]>60)
+						{
+							lane = lane + 1;
+						}
+					}
 				}
 				//right lane
 				else
 				{
-					if (gap_behind[1] > mingap && gap_ahead[1] > mingap)
+					if (gap_behind[1] > mingap_behind && gap_ahead[1] > mingap_ahead)
 					{
-						lane = lane - 1;
+						if (speed_ahead[1] > speed_ahead[lane] || speed_ahead[1] == 0)
+						{
+							lane = lane - 1;
+						}						
 					}
 				}
 
