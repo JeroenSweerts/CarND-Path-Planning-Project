@@ -255,7 +255,15 @@ int main() {
 				car_s = end_path_s;
 			}
 
-			bool too_close = false;
+			bool too_close = false;			
+
+			vector<double> gap_ahead(3);
+			vector<double> gap_behind(3);
+			for (int i = 0; i < gap_ahead.size(); i++)
+				{
+					gap_ahead[i] = 99999999;
+					gap_behind[i] = 99999999;
+				}
 
 			//find ref_v to use
 			//SENSOR FUSION
@@ -267,9 +275,40 @@ int main() {
 			double check_speed = sqrt(vx*vx + vy*vy);
 			double check_car_s = sensor_fusion[i][5];
 
-
-
 			float d = sensor_fusion[i][6];
+			//check the lane of the current vehicle
+			int this_lane;
+			
+			//std::cout << this_lane;
+				if (d < 4 && d > 0)
+				{
+					this_lane = 0;
+				}
+				else if (d < 8 && d > 4)
+				{
+					this_lane = 1;
+				}
+				else
+				{
+					this_lane = 2;
+				}			
+				
+				if (check_car_s > car_s) 
+				{
+					if (gap_ahead[this_lane] > check_car_s - car_s)
+					{
+						gap_ahead[this_lane] = check_car_s - car_s;
+					}					
+				}
+				else
+				{
+					if (gap_behind[this_lane] > car_s - check_car_s)
+					{
+						gap_behind[this_lane] = car_s - check_car_s;
+					}					
+				}
+				//std::cout << gap_behind[0];
+		
 			if(d < (2+4*lane+2) && d > (2+4*lane-2))
 				{
 				check_car_s += ((double)prev_size*.02*check_speed);//if using previous points can project s value outwards in time
@@ -288,21 +327,38 @@ int main() {
 			if (too_close)
 			{
 				ref_vel -= .224;
-
+				int mingap = 20;//minimum distance required to change lane safely
 				//left lane
 				if (lane == 0)
 				{
-					lane = lane + 1;
+					if (gap_behind[1] > mingap && gap_ahead[1] > mingap)
+					{
+						lane = lane + 1;
+					}
+					
 				}
-
+				//middle lane
 				else if (lane == 1)
 				{
-					lane = lane - 1;
-				}
+					if (gap_behind[0] > gap_behind[2] && gap_behind[0] > mingap && gap_ahead[0] > mingap)
+					{
+						lane = lane - 1;
+					}
 
+					if (gap_behind[2] > gap_behind[0] && gap_behind[2] > mingap && gap_ahead[2] > mingap)
+					{
+						lane = lane + 1;
+					}
+
+					
+				}
+				//right lane
 				else
 				{
-					lane = lane - 1;
+					if (gap_behind[1] > mingap && gap_ahead[1] > mingap)
+					{
+						lane = lane - 1;
+					}
 				}
 
 			}
